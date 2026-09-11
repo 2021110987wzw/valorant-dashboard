@@ -1,0 +1,31 @@
+name: Daily Data Update
+
+on:
+  schedule:
+    - cron: '30 0 * * *'   # 每天 08:30（北京时间）
+  workflow_dispatch: {}     # 支持手动触发
+
+permissions:
+  contents: write           # 允许推送数据更新
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Fetch latest data (skins / bundles / storefront / night market)
+        run: node scripts/update.mjs
+      - name: Commit data changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if git diff --cached --quiet; then
+            echo "No data changes, skip commit."
+          else
+            git commit -m "chore: daily data update $(date -u +%Y-%m-%d)"
+            git push
+          fi

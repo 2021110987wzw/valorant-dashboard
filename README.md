@@ -12,6 +12,8 @@
 
 ## 发布到公网（给朋友看）
 
+**已部署地址**：<https://2021110987wzw.github.io/valorant-dashboard/>（GitHub Pages + Actions 每日自动更新）
+
 **临时链接（免账号，立即可用）**：本机自带 OpenSSH，一条命令把本地站点映射到公网：
 
 ```powershell
