@@ -29,7 +29,7 @@ function renderLiveStore() {
       itemsHtml = b.items.map((it) => `
         <div class="live-item" data-uuid="${esc(it.uuid)}" title="点击查看特效预览">
           <img src="${esc(it.icon || phIcon(it.name))}" alt="" data-fbk="${esc(it.name)}">
-          <div><div class="li-name">${esc(it.name)}</div><div class="li-sub">${esc(it.weapon)} · ${tierInfo(it.tier).zh}</div></div>
+          <div><div class="li-name">${esc(it.name)}</div><div class="li-sub">${esc(it.weapon)} · ${tierInfo(it.tier).zh}</div>${it.nameEn && it.nameEn !== it.name ? `<div class="en-sub">${esc(it.nameEn)}</div>` : ''}</div>
           <div class="li-price">
             ${d ? `<span class="old">${fmtPrice(it.price)}</span><span class="now">${fmtPrice(off(it.price))} VP</span>`
                : `<span class="now" style="color:var(--text)">${fmtPrice(it.price)} VP</span>`}
@@ -166,6 +166,7 @@ function bundleCard(b) {
     <img class="b-img" src="${esc(img || phIcon(b.name))}" alt="${esc(b.name)}" data-fbk="${esc(b.name)}" loading="lazy">
     <div class="b-body">
       <h3>${esc(b.name)}</h3>
+      ${enSub(b.name, b.nameEn, 'en-sub')}
       <div class="b-sub">${b.itemCount} 件皮肤${b.items.some((i) => i.category === '近战') ? ' · 含近战' : ''}</div>
       <div class="bundle-price">
         <span class="now">≈ ${fmtPrice(b.price)} VP</span>
@@ -189,6 +190,7 @@ function renderAllBundles() {
       <img class="b-icon" src="${esc(b.icon || phIcon(b.name))}" alt="" data-fbk="${esc(b.name)}" loading="lazy">
       <div>
         <div class="br-name">${esc(b.name)}</div>
+        ${enSub(b.name, b.nameEn, 'en-sub')}
         <div class="br-meta">${b.itemCount} 件 · ${b.items.map((i) => esc(i.weapon)).slice(0, 6).join(' / ')}${b.itemCount > 6 ? '…' : ''}</div>
       </div>
       <div class="chips">${b.items.slice(0, 5).map((it) => `
@@ -226,6 +228,7 @@ function renderHome() {
       <span class="tag">游戏版本 <b>${esc(m.gameVersion || '—')}</b></span>
       <span class="tag">图鉴 <b>${Data.skins.length}</b> 款皮肤</span>
       <span class="tag">礼包 <b>${Data.bundles.length}</b> 个</span>
+      <span class="tag">国服官方译名</span>
       <span class="tag">每日自动更新 ✓</span>
     </div>
   </div>

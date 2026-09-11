@@ -4,13 +4,16 @@
 const Data = { bundles: [], skins: [], storefront: null, nm: null, meta: null };
 const skinById = new Map();
 
+/* 品质档位：名称采用国服官方译名 */
 const TIERS = {
-  Exclusive: { zh: '限定', color: '#e8a33d' },
-  Ultra:     { zh: '尊爵', color: '#ff5b3c' },
-  Premium:   { zh: '高级', color: '#d76ab2' },
-  Deluxe:    { zh: '奢华', color: '#3ddc84' },
-  Select:    { zh: '精选', color: '#4aa0e8' },
+  Select:    { zh: '精选', color: '#4aa0e8', rank: 1 },
+  Deluxe:    { zh: '豪华', color: '#3ddc84', rank: 2 },
+  Premium:   { zh: '卓越', color: '#d76ab2', rank: 3 },
+  Exclusive: { zh: '传奇', color: '#e8a33d', rank: 4 },
+  Ultra:     { zh: '终极', color: '#ff5b3c', rank: 5 },
 };
+const tierList = () => Object.entries(TIERS).sort((a, b) => a[1].rank - b[1].rank);
+const tierKeyOfZh = (zh) => (tierList().find(([, v]) => v.zh === zh) || [])[0];
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => (
   { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
@@ -26,6 +29,8 @@ function tierBadge(t) {
 function tierDot(t) {
   return `<span class="tier-dot" style="background:${tierInfo(t).color}" title="${esc(t)}"></span>`;
 }
+/** 英文名副标题（国服名与英文名不同时才显示） */
+const enSub = (zh, en, cls) => (en && en !== zh ? `<div class="${cls || 'en-sub'}">${esc(en)}</div>` : '');
 
 /** 图片加载失败时的占位图 */
 function phIcon(text, color) {
@@ -135,9 +140,10 @@ function renderModal() {
     </div>
     <div class="modal-info">
       <h2>${esc(skin.name)}</h2>
-      <div class="info-row">${tierBadge(skin.tier)}<span class="val">${esc(skin.weapon)} · ${esc(skin.category)}</span></div>
-      <div class="info-row"><span class="lbl">系列</span><span class="val">${esc(skin.themeZh)}${skin.themeZh !== skin.theme ? ` <span class="muted">(${esc(skin.theme)})</span>` : ''}</span></div>
-      <div class="info-row"><span class="lbl">价格</span><span class="val" style="color:var(--gold);font-weight:700">${skin.price ? fmtPrice(skin.price) + ' VP' : '—'}</span></div>
+      ${enSub(skin.name, skin.nameEn, 'modal-en')}
+      <div class="info-row">${tierBadge(skin.tier)}<span class="val">${esc(skin.weapon)}${skin.weaponEn && skin.weaponEn !== skin.weapon ? ` <span class="muted">(${esc(skin.weaponEn)})</span>` : ''} · ${esc(skin.category)}</span></div>
+      <div class="info-row"><span class="lbl">系列</span><span class="val">${esc(skin.theme)}${skin.themeEn && skin.themeEn !== skin.theme ? ` <span class="muted">(${esc(skin.themeEn)})</span>` : ''}</span></div>
+      <div class="info-row"><span class="lbl">价格</span><span class="val" style="color:var(--gold);font-weight:700">${skin.price ? fmtPrice(skin.price) + ' VP' + '<span class="muted" style="font-weight:400;font-size:11px">（国际服参考）</span>' : '—'}</span></div>
       <div class="chroma-block">
         <span class="lbl">配色（${skin.chromas.length} 种）· 点击切换外观与特效</span>
         <div class="chroma-row">${chromasHtml}</div>
