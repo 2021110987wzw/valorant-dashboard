@@ -62,7 +62,7 @@ const simCards = $$('#nm-sim-box .nm-sim-card');
 assert(simCards.length === 6, '模拟夜市生成 6 款皮肤');
 console.log('  首张夜市卡内容:', JSON.stringify(simCards[0].textContent.trim().replace(/\s+/g, ' ')));
 assert(/-\d+%/.test(simCards[0].textContent), '模拟夜市含折扣徽标');
-assert(simCards[0].textContent.includes('VP'), '模拟夜市含折后价');
+assert(simCards[0].textContent.includes('点券'), '模拟夜市含折后价');
 
 assert($$('#featured-bundles .bundle-card').length >= 6, '近期礼包精选已渲染');
 assert($$('#all-bundles .bundle-row').length > 0, '全部礼包列表已渲染');

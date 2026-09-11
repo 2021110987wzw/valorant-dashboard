@@ -19,6 +19,9 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => (
   { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
 ));
 const fmtPrice = (n) => (n == null ? '—' : Number(n).toLocaleString('en-US'));
+/** 国服点券价格（1 元 = 10 点券） */
+const cnPrice = (n) => (n == null ? '—' : fmtPrice(n) + ' 点券');
+const yuanPrice = (n) => (n == null ? '' : '约 ' + Number(n / 10).toLocaleString('zh-CN', { maximumFractionDigits: 1 }) + ' 元');
 const fmtDate = (iso) => (iso ? String(iso).slice(0, 10) : '—');
 const tierInfo = (t) => TIERS[t] || { zh: '其他', color: '#9aa4b2' };
 
@@ -143,12 +146,12 @@ function renderModal() {
       ${enSub(skin.name, skin.nameEn, 'modal-en')}
       <div class="info-row">${tierBadge(skin.tier)}<span class="val">${esc(skin.weapon)}${skin.weaponEn && skin.weaponEn !== skin.weapon ? ` <span class="muted">(${esc(skin.weaponEn)})</span>` : ''} · ${esc(skin.category)}</span></div>
       <div class="info-row"><span class="lbl">系列</span><span class="val">${esc(skin.theme)}${skin.themeEn && skin.themeEn !== skin.theme ? ` <span class="muted">(${esc(skin.themeEn)})</span>` : ''}</span></div>
-      <div class="info-row"><span class="lbl">价格</span><span class="val" style="color:var(--gold);font-weight:700">${skin.price ? fmtPrice(skin.price) + ' VP' + '<span class="muted" style="font-weight:400;font-size:11px">（国际服参考）</span>' : '—'}</span></div>
+      <div class="info-row"><span class="lbl">价格</span><span class="val" style="color:var(--gold);font-weight:700">${cnPrice(skin.price)}<span class="muted" style="font-weight:400;font-size:11px">（${yuanPrice(skin.price)}${skin.priceVp ? ` · 国际服 ≈ ${fmtPrice(skin.priceVp)} VP` : ''}）</span></span></div>
       <div class="chroma-block">
         <span class="lbl">配色（${skin.chromas.length} 种）· 点击切换外观与特效</span>
         <div class="chroma-row">${chromasHtml}</div>
       </div>
-      <div class="modal-hint">点击级别标签查看该等级特效动画（含击杀特效/检视动画的视频为自动播放）；部分等级仅有外观贴图。</div>
+      <div class="modal-hint">点击级别标签查看该等级特效动画（含击杀特效/检视动画的视频为自动播放）；部分等级仅有外观贴图。${skin.tierInferred ? '<br>本款为近战武器：品质按同系列枪械推断，价格按国服"同品质枪械价 ×2"换算。' : ''}</div>
     </div>
   </div>`;
 

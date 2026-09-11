@@ -60,12 +60,36 @@ function tierKey(displayName) {
   return 'None';
 }
 
-/* 官方定价规则（VP，国际服口径）：
- * 枪械: 终极 2475 / 传奇 2175（冠军赛·双城之战等特别系列 2675）/ 卓越 1775 / 豪华 1275 / 精选 875
- * 近战: 终极 4350 / 传奇 4950 / 卓越 3550 / 豪华 2550 / 精选 1750 */
-const GUN_PRICE = { Ultra: 2475, Exclusive: 2175, Premium: 1775, Deluxe: 1275, Select: 875 };
-const MELEE_PRICE = { Ultra: 4350, Exclusive: 4950, Premium: 3550, Deluxe: 2550, Select: 1750 };
+/* ---- 国服点券价格 ----
+ * 枪械档位为**国服商城实测值**（来源：国服 wiki 商城价格行，逐一核对）：
+ *   精选 690 / 豪华 890 / 卓越 1290 / 传奇 1590 / 终极 1790
+ * 近战武器按"同品质枪械价 ×2"（国服实测：卓越刀 2580、传奇刀 3180，均等于对应枪价 ×2）：
+ *   1380 / 1780 / 2580 / 3180 / 3580
+ * 个别系列国服有独立定价，已核实的加在下面的覆盖表
+ */
+const GUN_PRICE_CN = { Select: 690, Deluxe: 890, Premium: 1290, Exclusive: 1590, Ultra: 1790 };
+const MELEE_PRICE_CN = { Select: 1380, Deluxe: 1780, Premium: 2580, Exclusive: 3180, Ultra: 3580 };
+const CN_THEME_OVERRIDE = {
+  'Kuronami': { gun: 1690, melee: 3380 },                      // 塑水宗：传奇档 1690（实测）
+  'Radiant Entertainment System': { gun: 2190, melee: 4380 },  // 源能者娱乐系统：终极档 2190（实测）
+};
+
+/* 国际服 VP 参考价（仅用于对照显示） */
+const GUN_PRICE_VP = { Ultra: 2475, Exclusive: 2175, Premium: 1775, Deluxe: 1275, Select: 875 };
+const MELEE_PRICE_VP = { Ultra: 4950, Exclusive: 4350, Premium: 3550, Deluxe: 2550, Select: 1750 };
 const EXCLUSIVE_2675 = ['Champions 2021', 'Champions 2022', 'Champions 2023', 'Champions 2024', 'Champions 2025', 'Arcane'];
+
+function priceCn(tier, category, themeEn) {
+  const ov = CN_THEME_OVERRIDE[themeEn];
+  if (category === '近战') return ov?.melee ?? MELEE_PRICE_CN[tier] ?? null;
+  return ov?.gun ?? GUN_PRICE_CN[tier] ?? null;
+}
+function priceVp(tier, category, themeEn) {
+  if (category === '近战') return MELEE_PRICE_VP[tier] ?? null;
+  let p = GUN_PRICE_VP[tier];
+  if (tier === 'Exclusive' && EXCLUSIVE_2675.includes(themeEn)) p = 2675;
+  return p ?? null;
+}
 
 const CATEGORY_ZH = {
   Sidearm: '手枪', SMG: '冲锋枪', Rifle: '步枪', Sniper: '狙击枪',
@@ -194,12 +218,8 @@ async function main() {
     }
   }
 
-  const priceOf = (tier, category, themeEn) => {
-    if (category === '近战') return MELEE_PRICE[tier] ?? null;
-    let p = GUN_PRICE[tier];
-    if (tier === 'Exclusive' && EXCLUSIVE_2675.includes(themeEn)) p = 2675;
-    return p ?? null;
-  };
+  const tierZhByKey = new Map();
+  for (const v of tierByUuid.values()) tierZhByKey.set(v.key, v.zh);
 
   /* ---------- 皮肤图鉴（英文 + 国服译名） ---------- */
   const zhSkinById = new Map(skinsZh.map((s) => [s.uuid, s]));
@@ -234,7 +254,9 @@ async function main() {
       weapon: wi.weapon,
       weaponEn: wi.weaponEn,
       category: wi.category,
-      price: priceOf(tier, wi.category, themeEn),
+      price: priceCn(tier, wi.category, themeEn),      // 国服点券
+      priceVp: priceVp(tier, wi.category, themeEn),    // 国际服 VP 对照
+      priceNote: wi.category === '近战' ? '同品质 ×2 换算' : '国服商城实测档位',
       icon: s.displayIcon || null,
       levels: (s.levels || []).map((lv, i) => ({
         name: lv.displayName,
@@ -254,6 +276,35 @@ async function main() {
     catalog.push(entry);
     skinMap.set(s.uuid, entry);
   }
+
+  /* ---------- 近战品质校正 ----------
+   * 官方数据把近战皮肤统一标注为"传奇"（国际服近战确实同价），
+   * 但国服近战按品质定价，因此用**同系列枪械的品质**推断近战真实品质。 */
+  const themeTierVotes = new Map();
+  for (const sk of catalog) {
+    if (sk.category === '近战') continue;
+    if (!themeTierVotes.has(sk.themeEn)) themeTierVotes.set(sk.themeEn, new Map());
+    const votes = themeTierVotes.get(sk.themeEn);
+    votes.set(sk.tier, (votes.get(sk.tier) || 0) + 1);
+  }
+  const themeTier = new Map();
+  for (const [theme, votes] of themeTierVotes) {
+    themeTier.set(theme, [...votes.entries()].sort((a, b) => b[1] - a[1])[0][0]);
+  }
+  let meleeFixed = 0;
+  for (const sk of catalog) {
+    if (sk.category !== '近战') continue;
+    const inferred = themeTier.get(sk.themeEn);
+    if (inferred && inferred !== sk.tier) {
+      sk.tier = inferred;
+      sk.tierZh = tierZhByKey.get(inferred) || sk.tierZh;
+      sk.tierInferred = true;                       // 品质由同系列枪械推断
+      sk.price = priceCn(sk.tier, sk.category, sk.themeEn);
+      sk.priceVp = priceVp(sk.tier, sk.category, sk.themeEn);
+      meleeFixed++;
+    }
+  }
+  console.log(`  近战品质校正: ${meleeFixed} 款（按同系列枪械品质推断）`);
 
   /* ---------- 礼包内容重建（按英文名匹配 + 特殊规则） ---------- */
   const themeSkins = new Map(); // norm(themeEn) -> skins
@@ -295,6 +346,8 @@ async function main() {
     if (!items.length) continue; // 纯饰品/不可重建的礼包跳过
     const total = items.reduce((sum, it) => sum + (it.price || 0), 0);
     const meleePrice = items.find((it) => it.category === '近战')?.price || 0;
+    const knifeFree = total - meleePrice; // 礼包惯例：刀免费
+    const price = knifeFree > 0 ? knifeFree : total; // 纯近战礼包不适用该惯例
     bundles.push({
       uuid: b.uuid,
       name: bundleZhById.get(b.uuid) || b.displayName, // 国服礼包名
@@ -303,10 +356,10 @@ async function main() {
       description: b.description || '',
       icon: b.displayIcon || b.displayIcon2 || null,
       promoImage: b.promoImage || b.verticalPromoImage || null,
-      price: Math.max(0, total - meleePrice), // 礼包惯例：刀免费
+      price,
       priceEstimated: true,
       total,
-      save: meleePrice,
+      save: Math.max(0, total - price),
       itemCount: items.length,
       items: items.map((it) => ({
         uuid: it.uuid, name: it.name, nameEn: it.nameEn, tier: it.tier, price: it.price,
@@ -412,6 +465,8 @@ async function main() {
       updatedAt: new Date().toISOString(),
       gameVersion: version.version || null,
       locale: 'zh-CN',
+      currency: '点券',
+      priceNote: '枪械档位为国服商城实测（精选 690 / 豪华 890 / 卓越 1290 / 传奇 1590 / 终极 1790），近战按同品质 ×2',
       bundleCount: bundles.length,
       skinCount: catalog.length,
       nmEligibleCount: nmPool.length,

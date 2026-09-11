@@ -101,7 +101,7 @@ function applyFilters() {
       <div class="sc-name">${esc(s.name)}</div>
       ${enSub(s.name, s.nameEn, 'en-sub sc-en')}
       <div class="sc-meta">${esc(s.weapon)} · ${esc(s.theme)}</div>
-      <div class="sc-bottom">${tierBadge(s.tier)}<span class="sc-price">${s.price ? fmtPrice(s.price) + ' VP' : '—'}</span></div>
+      <div class="sc-bottom">${tierBadge(s.tier)}<span class="sc-price">${cnPrice(s.price)}</span></div>
     </div>`;
   }).join('');
   grid.querySelectorAll('img[data-fbk]').forEach((img) => bindImgFallback(img, img.dataset.fbk));

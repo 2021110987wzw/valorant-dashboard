@@ -31,8 +31,8 @@ function renderLiveStore() {
           <img src="${esc(it.icon || phIcon(it.name))}" alt="" data-fbk="${esc(it.name)}">
           <div><div class="li-name">${esc(it.name)}</div><div class="li-sub">${esc(it.weapon)} · ${tierInfo(it.tier).zh}</div>${it.nameEn && it.nameEn !== it.name ? `<div class="en-sub">${esc(it.nameEn)}</div>` : ''}</div>
           <div class="li-price">
-            ${d ? `<span class="old">${fmtPrice(it.price)}</span><span class="now">${fmtPrice(off(it.price))} VP</span>`
-               : `<span class="now" style="color:var(--text)">${fmtPrice(it.price)} VP</span>`}
+            ${d ? `<span class="old">${fmtPrice(it.price)}</span><span class="now">${fmtPrice(off(it.price))} 点券</span>`
+               : `<span class="now" style="color:var(--text)">${fmtPrice(it.price)} 点券</span>`}
           </div>
         </div>`).join('');
     } else {
@@ -48,11 +48,11 @@ function renderLiveStore() {
       <div class="live-items">${itemsHtml}</div>
       ${b.items.length ? `
       <div class="live-total">
-        ${d ? `<span class="old">${fmtPrice(total)} VP</span>` : ''}
-        <span class="now">${fmtPrice(newTotal)} VP</span>
+        ${d ? `<span class="old">${fmtPrice(total)} 点券</span>` : ''}
+        <span class="now">${fmtPrice(newTotal)} 点券</span>
         ${d ? `<span class="off">-${d}%</span>` : ''}
       </div>
-      ${d ? '' : '<div class="live-note">价格按品质规则估算，折扣与最终价格以游戏内为准。</div>'}` : ''}
+      ${d ? '' : '<div class="live-note">价格按国服品质档位估算，折扣与最终价格以游戏内为准。</div>'}` : ''}
     </div>`;
   }).join('');
   return `<div class="live-grid">${cards}</div>
@@ -146,7 +146,7 @@ function renderNmResult() {
       <img src="${esc(s.icon || phIcon(s.name))}" alt="" data-fbk="${esc(s.name)}">
       <div class="nm-name">${esc(s.name)}</div>
       <div class="nm-sub">${esc(s.weapon)} · ${tierInfo(s.tier).zh}</div>
-      <div><span class="price-old">${fmtPrice(s.price)}</span> <span class="price-new">${fmtPrice(np)} VP</span></div>
+      <div><span class="price-old">${fmtPrice(s.price)}</span> <span class="price-new">${fmtPrice(np)} 点券</span></div>
     </div>`;
   }).join('')}</div>`;
 }
@@ -169,12 +169,12 @@ function bundleCard(b) {
       ${enSub(b.name, b.nameEn, 'en-sub')}
       <div class="b-sub">${b.itemCount} 件皮肤${b.items.some((i) => i.category === '近战') ? ' · 含近战' : ''}</div>
       <div class="bundle-price">
-        <span class="now">≈ ${fmtPrice(b.price)} VP</span>
+        <span class="now">≈ ${fmtPrice(b.price)} 点券</span>
         <span class="old">单买 ${fmtPrice(b.total)}</span>
-        <span class="save">省 ${fmtPrice(b.save)}</span>
+        <span class="save">${b.save > 0 ? '省 ' + fmtPrice(b.save) : '同款打包'}</span>
       </div>
       <div class="chips">${b.items.map((it) => `
-        <span class="chip" data-uuid="${esc(it.uuid)}" title="${esc(it.name)} · ${fmtPrice(it.price)} VP">
+        <span class="chip" data-uuid="${esc(it.uuid)}" title="${esc(it.name)} · ${fmtPrice(it.price)} 点券">
           ${tierDot(it.tier)}<img src="${esc(it.icon || phIcon(it.weapon))}" alt="" data-fbk="${esc(it.weapon)}">${esc(it.weapon)}
         </span>`).join('')}
       </div>
@@ -194,11 +194,11 @@ function renderAllBundles() {
         <div class="br-meta">${b.itemCount} 件 · ${b.items.map((i) => esc(i.weapon)).slice(0, 6).join(' / ')}${b.itemCount > 6 ? '…' : ''}</div>
       </div>
       <div class="chips">${b.items.slice(0, 5).map((it) => `
-        <span class="chip" data-uuid="${esc(it.uuid)}" title="${esc(it.name)} · ${fmtPrice(it.price)} VP">${tierDot(it.tier)}${esc(it.weapon)}</span>`).join('')}${b.itemCount > 5 ? `<span class="chip" style="cursor:default">+${b.itemCount - 5}</span>` : ''}
+        <span class="chip" data-uuid="${esc(it.uuid)}" title="${esc(it.name)} · ${fmtPrice(it.price)} 点券">${tierDot(it.tier)}${esc(it.weapon)}</span>`).join('')}${b.itemCount > 5 ? `<span class="chip" style="cursor:default">+${b.itemCount - 5}</span>` : ''}
       </div>
       <div class="br-price">
-        <div class="now">≈ ${fmtPrice(b.price)} VP</div>
-        <div class="save">省 ${fmtPrice(b.save)}</div>
+        <div class="now">≈ ${fmtPrice(b.price)} 点券</div>
+        <div class="save">${b.save > 0 ? '省 ' + fmtPrice(b.save) : '同款打包'}</div>
       </div>
     </div>`).join('');
   return `<div class="bundle-list">${rows}</div>
@@ -228,7 +228,7 @@ function renderHome() {
       <span class="tag">游戏版本 <b>${esc(m.gameVersion || '—')}</b></span>
       <span class="tag">图鉴 <b>${Data.skins.length}</b> 款皮肤</span>
       <span class="tag">礼包 <b>${Data.bundles.length}</b> 个</span>
-      <span class="tag">国服官方译名</span>
+      <span class="tag">国服译名 · 点券价</span>
       <span class="tag">每日自动更新 ✓</span>
     </div>
   </div>
