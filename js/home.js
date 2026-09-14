@@ -89,12 +89,14 @@ function renderNightMarket() {
   <div class="nm-timeline">${timeline}</div>
   <div class="nm-panel">
     <div class="nm-rules">
-      <b>夜市规则（2026 版）</b><br>
+      <b>夜市规则（依据官方 wiki）</b><br>
       · 每账号随机 6 款皮肤，折扣 <b>10% ~ 49%</b>，期内不变<br>
-      · 品质范围：精选 / 奢华 / 高级 / <b>限定</b>（不含尊爵）<br>
-      · 只出现上线满 2 个幕的商店皮肤，不含近战与通行证皮肤<br>
-      · 至少 2 款高级及以上品质；同一种武器最多 2 款<br>
-      · 当前资格池共 <b style="color:var(--text)">${nm.eligibleCount}</b> 款（按上述规则筛选）
+      · 品质范围：<b>精选 / 豪华 / 卓越</b>三种（<b style="color:var(--text)">传奇、限定、终极不进夜市</b>）<br>
+      · 近战武器可以进，但仅限价格 ≤ 3550 VP 的系列刀（掠影/离子/鬼/魔幻朋克等高价刀不进）<br>
+      · 不含<b>战队标配（VCT）</b>、冠军赛等限定系列，不含通行证皮肤与挂件类<br>
+      · 只出现上线满 2 个幕的商店皮肤<br>
+      · 至少 2 款为「近战 或 卓越品质」；同一种武器最多 2 款<br>
+      · 当前资格池共 <b style="color:var(--text)">${nm.eligibleCount}</b> 款（其中近战 ${nm.eligibleMeleeCount || 0} 把）
     </div>
     <div class="nm-sim">
       <div class="nm-sim-head">
@@ -118,18 +120,25 @@ function shuffle(arr) {
 
 function simulateNM() {
   const pool = Data.nm.eligiblePool.slice();
-  const high = shuffle(pool.filter((s) => s.tier === 'Premium' || s.tier === 'Exclusive'));
-  const rest = shuffle(pool);
+  if (!pool.length) { toast('资格池为空，请先更新数据'); return; }
+  // 官方规则：至少 2 款为「近战 或 卓越品质」，同武器最多 2 款，不足 6 款时放宽上限
+  const isHigh = (s) => s.tier === 'Premium' || s.category === '近战';
+  const high = shuffle(pool.filter(isHigh));
   const picked = [];
   const wc = {};
   const canAdd = (s) => (wc[s.weapon] || 0) < 2;
+  const take = (s) => { picked.push(s); wc[s.weapon] = (wc[s.weapon] || 0) + 1; };
   for (const s of high) {
     if (picked.length >= 2) break;
-    if (!picked.includes(s) && canAdd(s)) { picked.push(s); wc[s.weapon] = (wc[s.weapon] || 0) + 1; }
+    if (!picked.includes(s) && canAdd(s)) take(s);
   }
-  for (const s of rest) {
+  for (const s of shuffle(pool)) {
     if (picked.length >= 6) break;
-    if (!picked.includes(s) && canAdd(s)) { picked.push(s); wc[s.weapon] = (wc[s.weapon] || 0) + 1; }
+    if (!picked.includes(s) && canAdd(s)) take(s);
+  }
+  for (const s of shuffle(pool)) {           // 放宽同武器限制，保证 6 款
+    if (picked.length >= 6) break;
+    if (!picked.includes(s)) take(s);
   }
   nmResult = picked.map((s) => ({ ...s, off: 10 + Math.floor(Math.random() * 40) }));
   const box = document.getElementById('nm-sim-box');

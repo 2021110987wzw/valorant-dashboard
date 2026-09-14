@@ -98,6 +98,12 @@ const CATEGORY_ZH = {
 
 const norm = (s) => (s || '').toLowerCase().replace(/\/\/\s*/g, ' ').replace(/\s+/g, ' ').trim();
 
+/* 高价刀系列（官方 wiki 夜市页标注：这些卓越系列里的近战价格 ≥ 4350 VP）
+ * —— 既影响夜市资格（不进夜市），也影响国服价格（按 4350 VP 档换算 3180 点券） */
+const KNIFE_PRICEY_THEMES = ['Bolt', 'Helix', 'Ion', 'Magepunk', 'Oni', 'Reaver', 'Sovereign', 'Valiant Hero', 'XERØFANG'].map(norm);
+const isPriceyKnifeTheme = (themeEn) =>
+  KNIFE_PRICEY_THEMES.includes(norm(themeEn).replace(/\s*(2\.0|3\.0)$/, ''));
+
 /* 夜市历史锚点（官方公告的真实活动日期，用于推算未来排期） */
 const NM_ANCHORS = [
   { start: '2024-02-15', end: '2024-02-28' },
@@ -292,6 +298,7 @@ async function main() {
     themeTier.set(theme, [...votes.entries()].sort((a, b) => b[1] - a[1])[0][0]);
   }
   let meleeFixed = 0;
+  let priceyKnives = 0;
   for (const sk of catalog) {
     if (sk.category !== '近战') continue;
     const inferred = themeTier.get(sk.themeEn);
@@ -303,8 +310,15 @@ async function main() {
       sk.priceVp = priceVp(sk.tier, sk.category, sk.themeEn);
       meleeFixed++;
     }
+    // 高价刀（该系列近战为 4350 VP 档）：国服按传奇刀价 3180 点券换算
+    if (isPriceyKnifeTheme(sk.themeEn) && sk.price < MELEE_PRICE_CN.Exclusive) {
+      sk.price = MELEE_PRICE_CN.Exclusive;
+      sk.priceVp = 4350;
+      sk.priceNote = '该系列近战为高价刀（国际服 4350 VP 档）';
+      priceyKnives++;
+    }
   }
-  console.log(`  近战品质校正: ${meleeFixed} 款（按同系列枪械品质推断）`);
+  console.log(`  近战品质校正: ${meleeFixed} 款（按同系列枪械品质推断），其中高价刀 ${priceyKnives} 把按 4350 VP 档计价`);
 
   /* ---------- 礼包内容重建（按英文名匹配 + 特殊规则） ---------- */
   const themeSkins = new Map(); // norm(themeEn) -> skins
@@ -402,9 +416,17 @@ async function main() {
     storefront = { source: null, fetchedAt: null, error: e.message, bundles: [] };
   }
 
-  /* ---------- 夜市 ---------- */
+  /* ---------- 夜市 ----------
+   * 规则来源：官方 wiki（wiki.playvalorant.com/en-us/Night.Market）
+   *  · 品质范围仅 精选 / 豪华 / 卓越（传奇、限定、终极不进夜市）
+   *  · 近战武器可进夜市，但仅限价格 ≤ 3550 VP 的系列刀（贵的刀不进）
+   *  · 不含通行证皮肤、挂件类(Gear)、战队标配(VCT)/冠军赛等限定系列
+   *  · 皮肤需在夜市开放的 2 个幕之前就已上架商店
+   */
   console.log('[6/7] 计算夜市排期与资格池 …');
-  const nmTiers = ['Select', 'Deluxe', 'Premium', 'Exclusive']; // 2026 起官方加入传奇品质
+  const nmTiers = ['Select', 'Deluxe', 'Premium'];
+  // 明确排除：战队标配、冠军赛、双城之战等限定系列
+  const NM_EXCLUDE_THEME = /VCT|Champions|冠军|Arcane|双城之战/i;
   const inBundle = new Set(bundles.flatMap((b) => b.items.map((it) => it.uuid)));
   // 官方规则：夜市只出现上线满 2 个幕的皮肤 —— 用"最近 10 个礼包系列"近似排除
   const recentThemes = new Set(
@@ -413,9 +435,16 @@ async function main() {
       .flatMap((b) => b.items.map((it) => skinMap.get(it.uuid)?.themeEn))
       .filter(Boolean)
   );
-  const nmPool = catalog.filter(
-    (s) => nmTiers.includes(s.tier) && s.category !== '近战' && inBundle.has(s.uuid) && !recentThemes.has(s.themeEn)
-  );
+  const nmEligible = (s) => {
+    if (!nmTiers.includes(s.tier)) return false;           // 品质：仅精选/豪华/卓越
+    if (s.category === '其他') return false;                // 挂件类(Gear)
+    if (inBundle.size && !inBundle.has(s.uuid)) return false; // 通行证/非商店皮肤
+    if (recentThemes.has(s.themeEn)) return false;          // 上线不足 2 个幕
+    if (NM_EXCLUDE_THEME.test(s.themeEn)) return false;     // 战队标配/冠军赛等
+    if (s.category === '近战' && isPriceyKnifeTheme(s.themeEn)) return false; // 高价刀（≥4350 VP 档）
+    return true;
+  };
+  const nmPool = catalog.filter(nmEligible);
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
   const dayMs = 86400000;
@@ -442,12 +471,25 @@ async function main() {
   const nightmarket = {
     generatedAt: new Date().toISOString(),
     note: '夜市为账号个人随机内容，公开接口无法获取个人夜市；排期按官方历史公告锚点推算，未来场次仅供参考。',
+    rules: {
+      tiers: ['Select', 'Deluxe', 'Premium'],
+      tierZh: ['精选', '豪华', '卓越'],
+      meleeEligible: true,
+      meleeNote: '仅限价格 ≤ 3550 VP 的系列刀（高价刀如掠影/离子/鬼/魔幻朋克等不进）',
+      excluded: ['传奇(Exclusive)与终极(Ultra)品质', '战队标配(VCT)/冠军赛等限定系列', '近战高价刀', '通行证皮肤', '挂件类(Gear)'],
+      actsDelay: 2,
+      minPremiumOrMelee: 2,
+      maxSameWeapon: 2,
+      discountRange: [10, 49],
+      source: 'wiki.playvalorant.com/en-us/Night.Market',
+    },
     active: allWindows.find((w) => w.status === 'active') || null,
     next: allWindows.find((w) => w.status === 'upcoming') || null,
     windows: allWindows.slice(-6),
     eligibleCount: nmPool.length,
+    eligibleMeleeCount: nmPool.filter((s) => s.category === '近战').length,
     eligiblePool: nmPool.map((s) => ({
-      uuid: s.uuid, name: s.name, nameEn: s.nameEn, tier: s.tier, weapon: s.weapon,
+      uuid: s.uuid, name: s.name, nameEn: s.nameEn, tier: s.tier, tierZh: s.tierZh, weapon: s.weapon,
       category: s.category, price: s.price, icon: s.icon,
     })),
   };
