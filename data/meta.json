@@ -1,11 +1,11 @@
 {
-  "updatedAt": "2026-09-23T05:02:19.862Z",
-  "gameVersion": "13.05.00.5350494",
+  "updatedAt": "2026-09-24T05:13:18.120Z",
+  "gameVersion": "13.06.00.5435758",
   "locale": "zh-CN",
   "currency": "点券",
   "priceNote": "枪械档位为国服商城实测（精选 690 / 豪华 890 / 卓越 1290 / 传奇 1590 / 终极 1790），近战按同品质 ×2",
-  "bundleCount": 184,
-  "skinCount": 1318,
-  "nmEligibleCount": 389,
+  "bundleCount": 186,
+  "skinCount": 1326,
+  "nmEligibleCount": 396,
   "liveStore": true
 }
